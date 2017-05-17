@@ -1,0 +1,52 @@
+---
+title: "MERS and Societal Learning"
+author: "Haley Ritger"
+date: "prepared to demonstrate R/Markdown for an IDEAS workshop at UGA on May 17,2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Is there evidence that shows societal learning following the MERS epidemic?
+
+We have data collected on the MERS cases in the recent epidemic and can use the data we have to see if the infectious period shortens as society learns strategies to contain the spread of the virus. To do this, we first need to manipulate our dataset a bit to get the data in a useful format for answering this question:
+
+```{r loading and manipulating data}
+mers <- read.csv("CopyOfcases.csv")
+#we need to correct some errors
+mers$hospitalized[890]
+mers$hospitalized[890] <- c('2015-02-20')
+mers <- mers[-471,]
+class(mers$onset)#ask R what class of data is onset date?
+#it is a factor; we need to reclassify as a date
+#correct from factors to dates using lubridate
+library(lubridate) 
+mers$onset2 <- ymd(mers$onset) 
+mers$hospitalized2 <- ymd(mers$hospitalized) 
+class(mers$onset2)
+#find days elapsed since start of epidemic
+day0 <- min(na.omit(mers$onset2))#na.omit skips performing the calculation for blank values
+#create a new, numeric value for the “epidemic day” for each case. 
+mers$epi.day <- as.numeric(mers$onset2 - day0)
+mers$infectious.period <- mers$hospitalized2-mers$onset2 # calculate "raw" infectious period 
+class(mers$infectious.period) # these data are class "difftime"
+mers$infectious.period <- as.numeric(mers$infectious.period, units = "days") #convert to days 
+mers$infectious.period2 <-ifelse(mers$infectious.period<0,0,mers$infectious.period) #get rid of negative infectious period values
+```
+
+## Now we can plot the data to see if the infectious period shortens as the epidemic progresses, which would be evidence of societal learning.
+
+```{r plot1, echo=FALSE}
+library(ggplot2)
+ggplot(data=mers) + geom_jitter(aes(x=epi.day,y=infectious.period2))
+```
+
+## Do different countries react differently?
+
+```{r plot2, echo=FALSE}
+ggplot(data=mers, mapping=aes(x=epi.day, y=infectious.period2)) + geom_point(mapping = aes(color=country)) + facet_wrap(~ country) + scale_y_continuous(limits = c(0, 50)) 
+```
+
+
